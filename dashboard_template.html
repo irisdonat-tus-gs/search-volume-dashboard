@@ -79,9 +79,12 @@
     .b-IT{background:#FFFBEB;color:#D97706;}
     .b-GS{background:#F0FDF4;color:#15803D;}
     .b-TUS{background:#FDF4FF;color:#9333EA;}
-    .b-private{background:#EFF6FF;color:#2563EB;}
+    .b-classes{background:#EFF6FF;color:#2563EB;}
+    .b-tutors{background:#EEF2FF;color:#4F46E5;}
     .b-online{background:#ECFDF5;color:#059669;}
-    .b-give{background:#FFF7ED;color:#C2410C;}
+    .b-pricing{background:#FFFBEB;color:#D97706;}
+    .b-supply{background:#FFF7ED;color:#C2410C;}
+    .b-levels{background:#F5F3FF;color:#7C3AED;}
     .num{text-align:right;font-variant-numeric:tabular-nums;}
     .table-footer{padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);}
     .pagination{display:flex;gap:3px;}
@@ -125,11 +128,14 @@
     <button class="filter-btn" onclick="setFilter('brand','TUS')">TUS</button>
   </div>
   <div class="filter-group">
-    <span class="filter-label">Intent</span>
+    <span class="filter-label">Segment</span>
     <button class="filter-btn active" onclick="setFilter('intent','ALL')">All</button>
-    <button class="filter-btn" onclick="setFilter('intent','private')">Private Tutoring</button>
+    <button class="filter-btn" onclick="setFilter('intent','classes')">Private Classes</button>
+    <button class="filter-btn" onclick="setFilter('intent','tutors')">Private Tutors</button>
     <button class="filter-btn" onclick="setFilter('intent','online')">Online Tutoring</button>
-    <button class="filter-btn" onclick="setFilter('intent','give')">Give Classes</button>
+    <button class="filter-btn" onclick="setFilter('intent','pricing')">Pricing</button>
+    <button class="filter-btn" onclick="setFilter('intent','supply')">Tutor Keywords</button>
+    <button class="filter-btn" onclick="setFilter('intent','levels')">Levels</button>
   </div>
   <div class="filter-group">
     <span class="filter-label">Keyword</span>
@@ -196,7 +202,7 @@
         <div class="chart-toggle">
           <button class="toggle-btn active" onclick="setTrendMode('total')">Total</button>
           <button class="toggle-btn" onclick="setTrendMode('market')">By Market</button>
-          <button class="toggle-btn" onclick="setTrendMode('intent')">By Intent</button>
+          <button class="toggle-btn" onclick="setTrendMode('intent')">By Segment</button>
           <button class="toggle-btn" onclick="setTrendMode('subject')">By Subject</button>
         </div>
       </div>
@@ -235,7 +241,7 @@
     <div class="chart-card">
       <div class="chart-header">
         <div>
-          <div class="chart-title">By Intent Group</div>
+          <div class="chart-title">By Segment</div>
           <div class="chart-sub">YTD 2026 volume share</div>
         </div>
       </div>
@@ -267,7 +273,7 @@
             <th onclick="sortBy('k')">Keyword <span id="si-k"></span></th>
             <th onclick="sortBy('m')">Market <span id="si-m"></span></th>
             <th onclick="sortBy('b')">Brand <span id="si-b"></span></th>
-            <th onclick="sortBy('intent')">Intent <span id="si-intent"></span></th>
+            <th onclick="sortBy('intent')">Segment <span id="si-intent"></span></th>
             <th onclick="sortBy('subject')">Subject <span id="si-subject"></span></th>
             <th onclick="sortBy('y25')" class="num">YTD 2025 <span id="si-y25"></span></th>
             <th onclick="sortBy('y26')" class="num">YTD 2026 <span id="si-y26"></span></th>
@@ -302,24 +308,69 @@ const KW_DATA = __DATA__;
 // ============================================================
 // CLASSIFICATION
 // ============================================================
+// Segment pattern banks (multilingual: DE · ES · FR · EN · IT) — diacritics stripped before matching
+const SEG_SUPPLY = [ // Tutor keywords: become a tutor / give classes / jobs
+  'geben','nachhilfe geben','nachhilfelehrer werden','lehrer werden','unterrichten','nachhilfe job',
+  'nachhilfe jobs','als nachhilfelehrer','stellenangebote','nachhilfe anbieten',
+  'dar clases','dar clase','ser profesor','conseguir alumnos','captar alumnos','busco alumnos',
+  'quiero dar','ofrecer clases','anunciar','trabajo de profesor','trabajar como profesor',
+  'donner des cours','donner cours','devenir prof','enseigner','offrir cours','trouver des eleves',
+  'job etudiant','offre d emploi','recrutement','donner des lecons',
+  'become a tutor','become tutor','tutor job','tutor jobs','tutoring job','tutoring jobs',
+  'teaching job','offer tuition','find students','teach ','work as a tutor',
+  'dare ripetizioni','dare lezioni','diventare insegnante','cerco studenti','offrire lezioni',
+  'lavoro tutor','trovare studenti','offerte di lavoro'
+];
+const SEG_PRICING = [ // Pricing: price / cost / fees
+  'price','prices','pricing','cost of','costs',' cost',' fee','fees','hourly rate','rate per hour',
+  'how much','per hour','per lesson',
+  'precio','precios','cuanto cuesta','cuanto vale','tarifa','tarifas','coste','costo','cuanto cobra',
+  'prix','tarif','tarifs','cout','combien coute','coute',
+  'preis','preise','kosten','kostet','wie viel','wieviel','honorar','stundensatz',
+  'prezzo','prezzi','costi','quanto costa','tariffa','tariffe','quanto costano'
+];
+const SEG_LEVELS = [ // Levels: exam / school level / age group
+  'primary','secondary','gcse','a-level','a level','a levels','ks1','ks2','ks3','ks4','key stage',
+  'sixth form','11 plus','11+','sats','undergraduate','university','college','degree',
+  'year 7','year 8','year 9','year 10','year 11',
+  'primaria','secundaria',' eso','bachillerato','selectividad','ebau','infantil','universidad',' fp','bachiller',
+  'primaire','college','lycee','bac ','baccalaureat','brevet','seconde','terminale','premiere',
+  'sixieme','cinquieme','quatrieme','troisieme','cp ','ce1','ce2','cm1','cm2','universite','prepa','licence','maternelle',
+  'grundschule','gymnasium','abitur','oberstufe','mittelstufe','realschule','hauptschule','klasse',
+  'sekundarstufe','studium','universitat','matura','leistungskurs',
+  'elementari','scuola media','medie','liceo','maturita','superiori','scuola primaria','scuola secondaria',
+  'universita','esame di stato'
+];
+const SEG_ONLINE = [ // Online tutoring
+  'online','on line','en ligne','a distancia','a distanza','por internet','en linea',
+  'virtual','virtuel','fernunterricht','webcam'
+];
+const SEG_TUTORS = [ // Private tutors (the person)
+  'private tutor','private teacher','tutor','teacher','tutors',
+  'profesor particular','profesora particular','profesor de','profesora de','profe particular','maestro de',
+  'professeur particulier','prof particulier','professeur de','prof de','enseignant','repetiteur',
+  'nachhilfelehrer','privatlehrer','lehrer','tutorin',
+  'insegnante privato','insegnante di','professore privato','professore di','tutor privato'
+];
+const SEG_CLASSES = [ // Private classes (the lesson/service)
+  'private tuition','private lessons','private classes','private tutoring','tutoring','tuition','lessons','classes',
+  'clases particulares','clase particular','clases de','clases',
+  'cours particuliers','cours particulier','cours de soutien','soutien scolaire','cours de','cours',
+  'nachhilfe','privatunterricht','nachhilfeunterricht','unterricht',
+  'ripetizioni','lezioni private','lezioni di','lezioni','ripetizione'
+];
+
+// Single-assignment by priority (most specific → most general). A keyword lands in exactly one segment.
 function classifyIntent(kwText, market) {
-  const kw = kwText.toLowerCase();
-  const G = [
-    'geben','werden','nachhilfelehrer','unterrichten als','lehrer werden','nachhilfe job',
-    'nachhilfe jobs','jobs als','anbieten','als schüler',
-    'dar clases','anunciar','alumnos para','alumnos tus','ofrecer clases','conseguir alumnos',
-    'captar alumnos','busco alumnos','quiero dar','ser profesor','anuncio',
-    'job étudiant','donner des cours','donner cours','devenir prof','enseigner',
-    'offrir cours','trouver des élèves','aide aux devoirs job',
-    'tutor job','tutor jobs','become a tutor','become tutor','teach ','teaching job',
-    'offer tuition','find students','private teaching',
-    'dare ripetizioni','dare lezioni','diventare insegnante','cerco studenti',
-    'offrire lezioni','lavoro tutor','trovare studenti'
-  ];
-  const O = ['online','en ligne','à distance','a distanza','por internet','virtual tutor','cours en ligne'];
-  for (const p of G) { if (kw.includes(p)) return 'give'; }
-  for (const p of O) { if (kw.includes(p)) return 'online'; }
-  return 'private';
+  const kw = kwText.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const has = arr => arr.some(p => kw.includes(p));
+  if (has(SEG_SUPPLY))  return 'supply';
+  if (has(SEG_PRICING)) return 'pricing';
+  if (has(SEG_LEVELS))  return 'levels';
+  if (has(SEG_ONLINE))  return 'online';
+  if (has(SEG_TUTORS))  return 'tutors';
+  if (has(SEG_CLASSES)) return 'classes';
+  return 'classes';
 }
 
 const SUBJECT_RULES = [
@@ -345,7 +396,9 @@ function classifySubject(kw) {
   return 'other';
 }
 
-const INTENT_LABELS  = {private:'Private Tutoring', online:'Online Tutoring', give:'Give Classes'};
+const INTENT_KEYS    = ['classes','tutors','online','pricing','supply','levels'];
+const INTENT_LABELS  = {classes:'Private Classes', tutors:'Private Tutors', online:'Online Tutoring',
+                        pricing:'Pricing', supply:'Tutor Keywords', levels:'Levels'};
 const SUBJECT_LABELS = {
   maths:'Maths', english:'English', french:'French', spanish:'Spanish', german:'German',
   physics:'Physics', chemistry:'Chemistry', biology:'Biology', sciences:'Sciences',
@@ -418,7 +471,7 @@ function mIdxs(year, months) {
 // CHARTS
 // ============================================================
 const MC = {DE:'#3B82F6', ES:'#EF4444', FR:'#6366F1', UK:'#10B981', IT:'#F59E0B'};
-const IC = {private:'#3B82F6', online:'#10B981', give:'#F97316'};
+const IC = {classes:'#3B82F6', tutors:'#6366F1', online:'#10B981', pricing:'#F59E0B', supply:'#F97316', levels:'#8B5CF6'};
 const SC_COLORS = ['#6366F1','#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899',
                    '#14B8A6','#F97316','#84CC16','#06B6D4','#A78BFA'];
 
@@ -481,7 +534,7 @@ function updTrend(data) {
       borderColor:MC[m], backgroundColor:MC[m]+'18', fill:false, tension:.35, pointRadius:3}));
     charts.trend.options.plugins.legend.display = true;
   } else if (ST.trendMode === 'intent') {
-    ds = ['private','online','give'].map(it => ({
+    ds = INTENT_KEYS.map(it => ({
       label:INTENT_LABELS[it],
       data:vm.map(i=>sumAt(data.filter(d=>d.intent===it),i)),
       borderColor:IC[it], backgroundColor:IC[it]+'18', fill:false, tension:.35, pointRadius:3}));
@@ -555,9 +608,9 @@ function updLast3m(data) {
 }
 
 function updIntent(data) {
-  const vols = ['private','online','give'].map(it => data.filter(d=>d.intent===it).reduce((a,d)=>a+d.y26,0));
-  charts.intent.data.labels = ['Private Tutoring','Online Tutoring','Give Classes'];
-  charts.intent.data.datasets = [{data:vols, backgroundColor:['#3B82F6','#10B981','#F97316'], borderWidth:0}];
+  const vols = INTENT_KEYS.map(it => data.filter(d=>d.intent===it).reduce((a,d)=>a+d.y26,0));
+  charts.intent.data.labels = INTENT_KEYS.map(it=>INTENT_LABELS[it]);
+  charts.intent.data.datasets = [{data:vols, backgroundColor:INTENT_KEYS.map(it=>IC[it]), borderWidth:0}];
   charts.intent.update('none');
 }
 
