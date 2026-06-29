@@ -2,11 +2,8 @@ name: Build and Deploy Dashboard
 
 on:
   push:
-    paths:
-      - 'data/*.xlsx'
-      - 'data/*.xls'
-      - 'dashboard_template.html'
-      - 'src/build.js'
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
