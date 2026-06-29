@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search Volume Dashboard · Tutoring Markets</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:#F1F5F9; --card:#FFFFFF; --border:#E2E8F0;
+      --text:#1E293B; --muted:#64748B; --primary:#2563EB;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);}
+
+    /* Header */
+    .header{background:linear-gradient(135deg,#1E3A5F 0%,#2563EB 100%);color:#fff;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;}
+    .header h1{font-size:21px;font-weight:700;}
+    .header p{font-size:12px;opacity:.8;margin-top:3px;}
+    .header-meta{font-size:12px;opacity:.75;text-align:right;line-height:1.6;}
+
+    /* Filter bar */
+    .filters-bar{background:#fff;border-bottom:1px solid var(--border);padding:10px 32px;display:flex;gap:20px;align-items:center;position:sticky;top:0;z-index:100;flex-wrap:wrap;}
+    .filter-group{display:flex;align-items:center;gap:5px;}
+    .filter-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap;}
+    .filter-btn{padding:4px 10px;border:1px solid var(--border);background:#fff;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);transition:all .12s;}
+    .filter-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .filter-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .filter-select{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;outline:none;background:#fff;color:var(--text);}
+    .filter-select:focus{border-color:var(--primary);}
+
+    /* Main */
+    .main{padding:20px 32px;max-width:1400px;margin:0 auto;}
+
+    /* KPI */
+    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+    .kpi-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;}
+    .kpi-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent,#2563EB);border-radius:4px 0 0 4px;}
+    .kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+    .kpi-value{font-size:26px;font-weight:700;color:var(--text);margin:8px 0 4px;line-height:1;}
+    .kpi-sub{font-size:11px;color:var(--muted);}
+    .up{color:#16A34A;}.down{color:#DC2626;}
+
+    /* Chart cards */
+    .charts-row{display:grid;gap:14px;margin-bottom:20px;}
+    .charts-row.full{grid-template-columns:1fr;}
+    .charts-row.half{grid-template-columns:1fr 1fr;}
+    .charts-row.one-two{grid-template-columns:1fr 2fr;}
+    .chart-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+    .chart-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+    .chart-title{font-size:13px;font-weight:700;color:var(--text);}
+    .chart-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+    .chart-toggle{display:flex;gap:4px;flex-shrink:0;}
+    .toggle-btn{padding:3px 8px;border:1px solid var(--border);background:#fff;border-radius:5px;font-size:11px;cursor:pointer;color:var(--muted);transition:all .12s;}
+    .toggle-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .toggle-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .chart-wrap{position:relative;}
+
+    /* Table */
+    .table-section{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px;}
+    .table-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+    .table-header h3{font-size:13px;font-weight:700;}
+    .table-actions{display:flex;gap:8px;align-items:center;}
+    .table-search{padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;width:200px;}
+    .table-search:focus{border-color:var(--primary);}
+    .btn-sm{padding:5px 12px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;color:var(--muted);}
+    .btn-sm:hover{border-color:var(--primary);color:var(--primary);}
+    table.dt{width:100%;border-collapse:collapse;font-size:12px;}
+    table.dt th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);background:#F8FAFC;cursor:pointer;white-space:nowrap;user-select:none;}
+    table.dt th:hover{color:var(--primary);}
+    table.dt td{padding:8px 14px;border-bottom:1px solid #F1F5F9;vertical-align:middle;}
+    table.dt tr:last-child td{border-bottom:none;}
+    table.dt tr:hover td{background:#FAFAFA;}
+    .badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+    .b-DE{background:#EFF6FF;color:#2563EB;}
+    .b-ES{background:#FEF2F2;color:#DC2626;}
+    .b-FR{background:#EEF2FF;color:#4F46E5;}
+    .b-UK{background:#ECFDF5;color:#059669;}
+    .b-IT{background:#FFFBEB;color:#D97706;}
+    .b-GS{background:#F0FDF4;color:#15803D;}
+    .b-TUS{background:#FDF4FF;color:#9333EA;}
+    .b-private{background:#EFF6FF;color:#2563EB;}
+    .b-online{background:#ECFDF5;color:#059669;}
+    .b-give{background:#FFF7ED;color:#C2410C;}
+    .num{text-align:right;font-variant-numeric:tabular-nums;}
+    .table-footer{padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);}
+    .pagination{display:flex;gap:3px;}
+    .page-btn{padding:3px 9px;border:1px solid var(--border);background:#fff;border-radius:5px;font-size:11px;cursor:pointer;}
+    .page-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .page-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+
+    @media(max-width:900px){
+      .kpi-row{grid-template-columns:repeat(2,1fr);}
+      .charts-row.half,.charts-row.one-two{grid-template-columns:1fr;}
+      .main{padding:14px 16px;}
+      .filters-bar{padding:10px 16px;}
+      .header{padding:14px 16px;}
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Search Volume Dashboard</h1>
+    <p>Tutoring Markets · Jan 2025 – May 2026 · GS &amp; TUS Keywords</p>
+  </div>
+  <div class="header-meta" id="header-meta"></div>
+</div>
+
+<div class="filters-bar">
+  <div class="filter-group">
+    <span class="filter-label">Market</span>
+    <button class="filter-btn active" onclick="setFilter('market','ALL')">All</button>
+    <button class="filter-btn" onclick="setFilter('market','DE')">DE</button>
+    <button class="filter-btn" onclick="setFilter('market','ES')">ES</button>
+    <button class="filter-btn" onclick="setFilter('market','FR')">FR</button>
+    <button class="filter-btn" onclick="setFilter('market','UK')">UK</button>
+    <button class="filter-btn" onclick="setFilter('market','IT')">IT</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Brand</span>
+    <button class="filter-btn active" onclick="setFilter('brand','ALL')">All</button>
+    <button class="filter-btn" onclick="setFilter('brand','GS')">GS</button>
+    <button class="filter-btn" onclick="setFilter('brand','TUS')">TUS</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Intent</span>
+    <button class="filter-btn active" onclick="setFilter('intent','ALL')">All</button>
+    <button class="filter-btn" onclick="setFilter('intent','private')">Private Tutoring</button>
+    <button class="filter-btn" onclick="setFilter('intent','online')">Online Tutoring</button>
+    <button class="filter-btn" onclick="setFilter('intent','give')">Give Classes</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Keyword</span>
+    <input type="text" class="table-search" id="kwSearch" placeholder="Filter by keyword…" oninput="onSearch()" style="width:180px">
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Subject</span>
+    <select class="filter-select" id="subjectSel" onchange="setFilter('subject',this.value)">
+      <option value="ALL">All Subjects</option>
+      <option value="maths">Maths</option>
+      <option value="english">English</option>
+      <option value="french">French</option>
+      <option value="spanish">Spanish</option>
+      <option value="german">German</option>
+      <option value="physics">Physics</option>
+      <option value="chemistry">Chemistry</option>
+      <option value="biology">Biology</option>
+      <option value="sciences">Sciences</option>
+      <option value="history">History / Geography</option>
+      <option value="music">Music</option>
+      <option value="it">IT / Computing</option>
+      <option value="economics">Economics</option>
+      <option value="languages">Languages</option>
+      <option value="literature">Literature / Writing</option>
+      <option value="other">Other / General</option>
+    </select>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="--accent:#2563EB">
+      <div class="kpi-label">Total Volume YTD 2026</div>
+      <div class="kpi-value" id="kpi-ytd26">—</div>
+      <div class="kpi-sub">Jan–May 2026</div>
+    </div>
+    <div class="kpi-card" style="--accent:#10B981">
+      <div class="kpi-label">YTD YoY Change</div>
+      <div class="kpi-value" id="kpi-yoy">—</div>
+      <div class="kpi-sub" id="kpi-yoy-sub">vs Jan–May 2025</div>
+    </div>
+    <div class="kpi-card" style="--accent:#F59E0B">
+      <div class="kpi-label">May 2026 Volume</div>
+      <div class="kpi-value" id="kpi-may26">—</div>
+      <div class="kpi-sub" id="kpi-may-yoy">vs May 2025</div>
+    </div>
+    <div class="kpi-card" style="--accent:#6366F1">
+      <div class="kpi-label">Keywords Tracked</div>
+      <div class="kpi-value" id="kpi-kwcount">—</div>
+      <div class="kpi-sub" id="kpi-kw-markets">across markets</div>
+    </div>
+  </div>
+
+  <!-- Monthly Trend -->
+  <div class="charts-row full">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Monthly Search Volume Trend</div>
+          <div class="chart-sub">Total search volume across selected keywords · Jan 2025 – May 2026</div>
+        </div>
+        <div class="chart-toggle">
+          <button class="toggle-btn active" onclick="setTrendMode('total')">Total</button>
+          <button class="toggle-btn" onclick="setTrendMode('market')">By Market</button>
+          <button class="toggle-btn" onclick="setTrendMode('intent')">By Intent</button>
+          <button class="toggle-btn" onclick="setTrendMode('subject')">By Subject</button>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:280px"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- YoY + Last 3M -->
+  <div class="charts-row half">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">YoY Evolution — Jan to May</div>
+          <div class="chart-sub">Monthly volume: 2025 vs 2026</div>
+        </div>
+        <div class="chart-toggle">
+          <button class="toggle-btn active" onclick="setYoyMode('volume')">Volume</button>
+          <button class="toggle-btn" onclick="setYoyMode('pct')">YoY %</button>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="yoyChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Last 3 Months Trend</div>
+          <div class="chart-sub">Mar – Apr – May 2026 vs same period 2025</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="last3mChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Intent + Subject -->
+  <div class="charts-row one-two">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">By Intent Group</div>
+          <div class="chart-sub">YTD 2026 volume share</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="intentChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Volume by Subject Group</div>
+          <div class="chart-sub">YTD 2026 vs YTD 2025 — top 12 subjects</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="subjectChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Keywords Table -->
+  <div class="table-section">
+    <div class="table-header">
+      <h3 id="table-title">Keywords</h3>
+      <div class="table-actions">
+        <button class="btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dt" id="dataTable">
+        <thead>
+          <tr>
+            <th onclick="sortBy('k')">Keyword <span id="si-k"></span></th>
+            <th onclick="sortBy('m')">Market <span id="si-m"></span></th>
+            <th onclick="sortBy('b')">Brand <span id="si-b"></span></th>
+            <th onclick="sortBy('intent')">Intent <span id="si-intent"></span></th>
+            <th onclick="sortBy('subject')">Subject <span id="si-subject"></span></th>
+            <th onclick="sortBy('y25')" class="num">YTD 2025 <span id="si-y25"></span></th>
+            <th onclick="sortBy('y26')" class="num">YTD 2026 <span id="si-y26"></span></th>
+            <th onclick="sortBy('yoy')" class="num">YoY% <span id="si-yoy"></span></th>
+            <th onclick="sortBy('may26')" class="num">May 2026 <span id="si-may26"></span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span id="table-count"></span>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ============================================================
+// DATA (injected by build script)
+// ============================================================
+const MARKETS = ['DE','ES','FR','UK','IT'];
+const BRANDS  = ['GS','TUS','BOTH'];
+// Injected by build script — grows automatically as new months are added
+const MONTH_KEYS   = __MONTH_KEYS__;
+const MONTH_LABELS = __MONTH_LABELS__;
+// Format: [keyword_str, market_idx(0-4), brand_idx(0-2), v0..vN, ytd25, ytd26, ytd_yoy_decimal]
+//  positions:   0             1               2          3..N+2  N+3    N+4   N+5  (N = months count)
+const KW_DATA = __DATA__;
+
+// ============================================================
+// CLASSIFICATION
+// ============================================================
+function classifyIntent(kwText, market) {
+  const kw = kwText.toLowerCase();
+  const G = [
+    'geben','werden','nachhilfelehrer','unterrichten als','lehrer werden','nachhilfe job',
+    'nachhilfe jobs','jobs als','anbieten','als schüler',
+    'dar clases','anunciar','alumnos para','alumnos tus','ofrecer clases','conseguir alumnos',
+    'captar alumnos','busco alumnos','quiero dar','ser profesor','anuncio',
+    'job étudiant','donner des cours','donner cours','devenir prof','enseigner',
+    'offrir cours','trouver des élèves','aide aux devoirs job',
+    'tutor job','tutor jobs','become a tutor','become tutor','teach ','teaching job',
+    'offer tuition','find students','private teaching',
+    'dare ripetizioni','dare lezioni','diventare insegnante','cerco studenti',
+    'offrire lezioni','lavoro tutor','trovare studenti'
+  ];
+  const O = ['online','en ligne','à distance','a distanza','por internet','virtual tutor','cours en ligne'];
+  for (const p of G) { if (kw.includes(p)) return 'give'; }
+  for (const p of O) { if (kw.includes(p)) return 'online'; }
+  return 'private';
+}
+
+const SUBJECT_RULES = [
+  {id:'maths',    p:['math','mathe','mates','matemat','mathémat','calcul','algebra','statist','arith','geometr','équat','trigono']},
+  {id:'english',  p:['english','englisch','anglais','inglés','inglese','ingles','ingls']},
+  {id:'french',   p:['französ','français','francés','french','francese','franco']},
+  {id:'spanish',  p:['spanisch','español','espagnol','spagnolo','spanish','espanol']},
+  {id:'german',   p:['deutsch','german','tedesco','alemán','aleman','allemand']},
+  {id:'physics',  p:['physik','physics','physique','física','fisica']},
+  {id:'chemistry',p:['chemie','chemistry','chimie','química','chimica','quimica']},
+  {id:'biology',  p:['biologie','biology','biología','biologia','svt']},
+  {id:'sciences', p:['science','ciencias','stem','natural']},
+  {id:'history',  p:['histoire','historia','history','storia','geograph','géograph','geograf','geoscience']},
+  {id:'music',    p:['musik','music','musique','música','musica','guitare','guitarra','piano','chant','canto','chitarra','batteria','violon','violin','flute','flauta']},
+  {id:'it',       p:['informatik','informatica','informatique','computing','programm','coding','python','excel','digital','javascript','html','web dev']},
+  {id:'economics',p:['bwl','wirtschaft','economia','economía','économie','economics','accounting','buchführung','finance','compt','finanzen','buchhalt']},
+  {id:'languages',p:['arabisch','arab','chinesisch','chinese','japanisch','japan','türkisch','turkish','russisch','russian','portugu','latin','grec','hebrew','hébreu','vietnames','korean']},
+  {id:'literature',p:['literatur','literatura','littérature','letteratura','essay','writing','composition','grammar','redact']}
+];
+function classifySubject(kw) {
+  const k = kw.toLowerCase();
+  for (const r of SUBJECT_RULES) { for (const p of r.p) { if (k.includes(p)) return r.id; } }
+  return 'other';
+}
+
+const INTENT_LABELS  = {private:'Private Tutoring', online:'Online Tutoring', give:'Give Classes'};
+const SUBJECT_LABELS = {
+  maths:'Maths', english:'English', french:'French', spanish:'Spanish', german:'German',
+  physics:'Physics', chemistry:'Chemistry', biology:'Biology', sciences:'Sciences',
+  history:'History / Geo', music:'Music', it:'IT / Computing', economics:'Economics',
+  languages:'Languages', literature:'Literature', other:'Other / General'
+};
+
+// ============================================================
+// PRE-PROCESS
+// ============================================================
+const N = MONTH_KEYS.length;  // number of months — grows over time
+const DATA = KW_DATA.map(row => {
+  const market  = MARKETS[row[1]];
+  const brand   = BRANDS[row[2]];
+  const intent  = classifyIntent(row[0], market);
+  const subject = classifySubject(row[0]);
+  const vols    = row.slice(3, 3+N);
+  const ytd25   = row[3+N]   || 0;
+  const ytd26   = row[3+N+1] || 0;
+  const ytdYoy  = row[3+N+2] || 0;
+  return {k:row[0], m:market, b:brand, intent, subject, vols, y25:ytd25, y26:ytd26, yoy:ytdYoy};
+});
+
+// ============================================================
+// STATE
+// ============================================================
+const ST = {market:'ALL', brand:'ALL', intent:'ALL', subject:'ALL',
+             trendMode:'total', yoyMode:'volume',
+             sort:{col:'y26', dir:'desc'}, page:0, perPage:50, search:''};
+
+function filtered() {
+  return DATA.filter(d => {
+    if (ST.market  !== 'ALL' && d.m       !== ST.market)  return false;
+    if (ST.brand   !== 'ALL' && d.b !== ST.brand && d.b !== 'BOTH') return false;
+    if (ST.intent  !== 'ALL' && d.intent  !== ST.intent)  return false;
+    if (ST.subject !== 'ALL' && d.subject !== ST.subject) return false;
+    if (ST.search  && !d.k.toLowerCase().includes(ST.search)) return false;
+    return true;
+  });
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fV(v) {
+  if (!v || v === 0) return '0';
+  if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(1)+'M';
+  if (Math.abs(v) >= 1e3) return Math.round(v/100)/10+'K';
+  return Math.round(v).toLocaleString();
+}
+function fP(v) {
+  if (v == null || isNaN(v)) return '—';
+  return (v >= 0 ? '+' : '') + (v*100).toFixed(1)+'%';
+}
+function sumAt(data, idx) { return data.reduce((a,d) => a+(d.vols[idx]||0), 0); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Which month indices to show in trend chart (only months with data in current selection)
+function visibleMonths(data) {
+  return MONTH_KEYS.map((_,i) => i).filter(i => data.some(d => (d.vols[i]||0) > 0));
+}
+// Helper: find month index by key
+function midx(key) { return MONTH_KEYS.indexOf(key); }
+// Helper: indices for a year+month list
+function mIdxs(year, months) {
+  return months.map(m => midx(`${year}-${m}`)).filter(i => i >= 0);
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+const MC = {DE:'#3B82F6', ES:'#EF4444', FR:'#6366F1', UK:'#10B981', IT:'#F59E0B'};
+const IC = {private:'#3B82F6', online:'#10B981', give:'#F97316'};
+const SC_COLORS = ['#6366F1','#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899',
+                   '#14B8A6','#F97316','#84CC16','#06B6D4','#A78BFA'];
+
+let charts = {};
+const dOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}, tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>' '+ctx.dataset.label+': '+fV(ctx.raw)}}},
+  scales:{x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:'#F1F5F9'},ticks:{callback:v=>fV(v),font:{size:11}}}}
+};
+
+function mkLine(id, extra={}) {
+  return new Chart(document.getElementById(id), {type:'line', data:{labels:[],datasets:[]},
+    options:Object.assign(JSON.parse(JSON.stringify(dOpts)), extra.options||extra)});
+}
+function mkBar(id, extra={}) {
+  return new Chart(document.getElementById(id), {type:'bar', data:{labels:[],datasets:[]},
+    options:Object.assign(JSON.parse(JSON.stringify(dOpts)), extra.options||extra)});
+}
+
+function initCharts() {
+  Chart.defaults.font.family = "system-ui,sans-serif";
+
+  charts.trend = mkLine('trendChart', {
+    options:{...JSON.parse(JSON.stringify(dOpts)),
+      plugins:{...dOpts.plugins, legend:{display:true,position:'top',labels:{boxWidth:10,font:{size:11}}}}}});
+
+  charts.yoy = mkBar('yoyChart', {
+    options:{...JSON.parse(JSON.stringify(dOpts)),
+      plugins:{...dOpts.plugins, legend:{display:true,position:'top',labels:{boxWidth:10,font:{size:11}}}}}});
+
+  charts.last3m = mkBar('last3mChart', {
+    options:{...JSON.parse(JSON.stringify(dOpts)),
+      plugins:{...dOpts.plugins, legend:{display:true,position:'top',labels:{boxWidth:10,font:{size:11}}}}}});
+
+  charts.intent = new Chart(document.getElementById('intentChart'), {
+    type:'doughnut', data:{labels:[],datasets:[]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:11}}},
+               tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+fV(ctx.raw)+' ('+(ctx.raw/(ctx.dataset.data.reduce((a,b)=>a+b,0))*100).toFixed(1)+'%)'}}}}});
+
+  charts.subject = mkBar('subjectChart', {
+    options:{...JSON.parse(JSON.stringify(dOpts)), indexAxis:'y',
+      plugins:{...dOpts.plugins, legend:{display:true,position:'top',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{color:'#F1F5F9'},ticks:{callback:v=>fV(v),font:{size:11}}},
+              y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+}
+
+// ---- update each chart ----
+function updTrend(data) {
+  const vm = visibleMonths(data);
+  const labels = vm.map(i => MONTH_LABELS[i]);
+  let ds = [];
+  if (ST.trendMode === 'total') {
+    ds = [{label:'Total', data:vm.map(i=>sumAt(data,i)), borderColor:'#2563EB',
+           backgroundColor:'rgba(37,99,235,.08)', fill:true, tension:.35, pointRadius:3}];
+    charts.trend.options.plugins.legend.display = false;
+  } else if (ST.trendMode === 'market') {
+    const mkts = [...new Set(data.map(d=>d.m))].sort();
+    ds = mkts.map(m => ({label:m, data:vm.map(i=>sumAt(data.filter(d=>d.m===m),i)),
+      borderColor:MC[m], backgroundColor:MC[m]+'18', fill:false, tension:.35, pointRadius:3}));
+    charts.trend.options.plugins.legend.display = true;
+  } else if (ST.trendMode === 'intent') {
+    ds = ['private','online','give'].map(it => ({
+      label:INTENT_LABELS[it],
+      data:vm.map(i=>sumAt(data.filter(d=>d.intent===it),i)),
+      borderColor:IC[it], backgroundColor:IC[it]+'18', fill:false, tension:.35, pointRadius:3}));
+    charts.trend.options.plugins.legend.display = true;
+  } else if (ST.trendMode === 'subject') {
+    // top 5 subjects by ytd26
+    const sums = {};
+    data.forEach(d => { sums[d.subject] = (sums[d.subject]||0) + d.y26; });
+    const top5 = Object.entries(sums).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s])=>s);
+    ds = top5.map((s,ci) => ({
+      label:SUBJECT_LABELS[s]||s,
+      data:vm.map(i=>sumAt(data.filter(d=>d.subject===s),i)),
+      borderColor:SC_COLORS[ci], backgroundColor:SC_COLORS[ci]+'18', fill:false, tension:.35, pointRadius:3}));
+    charts.trend.options.plugins.legend.display = true;
+  }
+  charts.trend.data.labels = labels;
+  charts.trend.data.datasets = ds;
+  charts.trend.update('none');
+}
+
+function updYoY(data) {
+  // Find the two most recent years that have data
+  const activeYears = [...new Set(
+    MONTH_KEYS.filter((_,i) => data.some(d=>(d.vols[i]||0)>0)).map(k=>k.split('-')[0])
+  )].sort();
+  if (activeYears.length < 2) { charts.yoy.data.datasets=[]; charts.yoy.update('none'); return; }
+  const [prevY, currY] = activeYears.slice(-2);
+  const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Months present in both years
+  const sharedMonths = ['01','02','03','04','05','06','07','08','09','10','11','12'].filter(m =>
+    midx(`${prevY}-${m}`) >= 0 && midx(`${currY}-${m}`) >= 0);
+  if (!sharedMonths.length) return;
+  const prevIdxs = sharedMonths.map(m => midx(`${prevY}-${m}`));
+  const currIdxs = sharedMonths.map(m => midx(`${currY}-${m}`));
+  const labels = sharedMonths.map(m => MN[parseInt(m)-1]);
+  if (ST.yoyMode === 'volume') {
+    charts.yoy.data.labels = labels;
+    charts.yoy.data.datasets = [
+      {label:prevY, data:prevIdxs.map(i=>sumAt(data,i)), backgroundColor:'#94A3B8', borderRadius:4},
+      {label:currY, data:currIdxs.map(i=>sumAt(data,i)), backgroundColor:'#2563EB', borderRadius:4}
+    ];
+    charts.yoy.options.scales.y.ticks.callback = v => fV(v);
+  } else {
+    const vP = prevIdxs.map(i=>sumAt(data,i));
+    const vC = currIdxs.map(i=>sumAt(data,i));
+    const pcts = vP.map((a,i) => a > 0 ? ((vC[i]-a)/a*100) : 0);
+    charts.yoy.data.labels = labels;
+    charts.yoy.data.datasets = [{label:'YoY %', data:pcts,
+      backgroundColor:pcts.map(v=>v>=0?'#10B981':'#EF4444'), borderRadius:4}];
+    charts.yoy.options.scales.y.ticks.callback = v => (v>=0?'+':'')+v.toFixed(1)+'%';
+  }
+  charts.yoy.update('none');
+}
+
+function updLast3m(data) {
+  const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const activeIdxs = MONTH_KEYS.map((_,i)=>i).filter(i=>data.some(d=>(d.vols[i]||0)>0));
+  const last3 = activeIdxs.slice(-3);
+  if (last3.length < 3) { charts.last3m.data.datasets=[]; charts.last3m.update('none'); return; }
+  const currY  = MONTH_KEYS[last3[0]].split('-')[0];
+  const prevY  = String(parseInt(currY)-1);
+  const months = last3.map(i => MONTH_KEYS[i].split('-')[1]);
+  const prevIdxs = months.map(m => midx(`${prevY}-${m}`));
+  const labels = last3.map(i => { const [y,m]=MONTH_KEYS[i].split('-'); return `${MN[parseInt(m)-1]} ${y}`; });
+  charts.last3m.data.labels = labels;
+  charts.last3m.data.datasets = [
+    {label:prevY+' (same period)', data:prevIdxs.map(i=>i>=0?sumAt(data,i):0), backgroundColor:'#94A3B8', borderRadius:4},
+    {label:currY, data:last3.map(i=>sumAt(data,i)), backgroundColor:'#F97316', borderRadius:4}
+  ];
+  charts.last3m.update('none');
+}
+
+function updIntent(data) {
+  const vols = ['private','online','give'].map(it => data.filter(d=>d.intent===it).reduce((a,d)=>a+d.y26,0));
+  charts.intent.data.labels = ['Private Tutoring','Online Tutoring','Give Classes'];
+  charts.intent.data.datasets = [{data:vols, backgroundColor:['#3B82F6','#10B981','#F97316'], borderWidth:0}];
+  charts.intent.update('none');
+}
+
+function updSubject(data) {
+  const totals = {};
+  data.forEach(d => {
+    if (!totals[d.subject]) totals[d.subject] = {y25:0,y26:0};
+    totals[d.subject].y25 += d.y25;
+    totals[d.subject].y26 += d.y26;
+  });
+  const sorted = Object.entries(totals).sort((a,b)=>b[1].y26-a[1].y26).slice(0,12);
+  charts.subject.data.labels = sorted.map(([s])=>SUBJECT_LABELS[s]||s);
+  charts.subject.data.datasets = [
+    {label:'YTD 2025',data:sorted.map(([,v])=>v.y25),backgroundColor:'#94A3B8',borderRadius:3},
+    {label:'YTD 2026',data:sorted.map(([,v])=>v.y26),backgroundColor:'#6366F1',borderRadius:3}
+  ];
+  charts.subject.update('none');
+}
+
+// ============================================================
+// TABLE
+// ============================================================
+function updTable(data) {
+  const {col,dir} = ST.sort;
+  const sorted = [...data].sort((a,b) => {
+    let va,vb;
+    if (col==='k') return dir==='asc'?a.k.localeCompare(b.k):b.k.localeCompare(a.k);
+    if (col==='m') return dir==='asc'?a.m.localeCompare(b.m):b.m.localeCompare(a.m);
+    if (col==='b') return dir==='asc'?a.b.localeCompare(b.b):b.b.localeCompare(a.b);
+    if (col==='intent') return dir==='asc'?a.intent.localeCompare(b.intent):b.intent.localeCompare(a.intent);
+    if (col==='subject') return dir==='asc'?a.subject.localeCompare(b.subject):b.subject.localeCompare(a.subject);
+    if (col==='may26') { va=a.vols[16]||0; vb=b.vols[16]||0; }
+    else { va=a[col]||0; vb=b[col]||0; }
+    return dir==='asc'?va-vb:vb-va;
+  });
+
+  const total = sorted.length;
+  const pages = Math.max(1, Math.ceil(total/ST.perPage));
+  ST.page = Math.min(ST.page, pages-1);
+  const page = sorted.slice(ST.page*ST.perPage, (ST.page+1)*ST.perPage);
+
+  document.getElementById('tableBody').innerHTML = page.map(d => {
+    const yoy = d.y25 > 0 ? (d.y26-d.y25)/d.y25 : null;
+    const yc = yoy==null?'':yoy>=0?'up':'down';
+    return `<tr>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.k)}</td>
+      <td><span class="badge b-${d.m}">${d.m}</span></td>
+      <td><span class="badge b-${d.b}">${d.b}</span></td>
+      <td><span class="badge b-${d.intent}">${INTENT_LABELS[d.intent]}</span></td>
+      <td style="color:var(--muted);font-size:11px">${SUBJECT_LABELS[d.subject]||d.subject}</td>
+      <td class="num">${fV(d.y25)}</td>
+      <td class="num">${fV(d.y26)}</td>
+      <td class="num ${yc}">${fP(yoy)}</td>
+      <td class="num">${fV(d.vols[16]||0)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-count').textContent = total.toLocaleString()+' keywords';
+  document.getElementById('table-title').textContent = 'Keywords ('+total.toLocaleString()+')';
+
+  const pag = document.getElementById('pagination');
+  if (pages <= 1) { pag.innerHTML = ''; return; }
+  let h = '';
+  const ps = [];
+  for (let i=0;i<pages;i++) {
+    if (i===0||i===pages-1||Math.abs(i-ST.page)<=2) ps.push(i);
+    else if (ps[ps.length-1]!=='…') ps.push('…');
+  }
+  ps.forEach(p => {
+    if (p==='…') h+=`<span style="padding:3px 6px;color:var(--muted)">…</span>`;
+    else h+=`<button class="page-btn${p===ST.page?' active':''}" onclick="goPage(${p})">${p+1}</button>`;
+  });
+  pag.innerHTML = h;
+}
+
+// ============================================================
+// KPIs
+// ============================================================
+function updKPIs(data) {
+  const ytd26 = data.reduce((a,d)=>a+d.y26,0);
+  const ytd25 = data.reduce((a,d)=>a+d.y25,0);
+  const yoy   = ytd25>0?(ytd26-ytd25)/ytd25:0;
+  const may26 = data.reduce((a,d)=>a+(d.vols[16]||0),0);
+  const may25 = data.reduce((a,d)=>a+(d.vols[4]||0),0);
+  const mayYoy= may25>0?(may26-may25)/may25:0;
+
+  document.getElementById('kpi-ytd26').textContent = fV(ytd26);
+  const yoyEl = document.getElementById('kpi-yoy');
+  yoyEl.textContent = fP(yoy);
+  yoyEl.className = 'kpi-value '+(yoy>=0?'up':'down');
+  document.getElementById('kpi-yoy-sub').textContent = 'YTD 2025: '+fV(ytd25);
+  document.getElementById('kpi-may26').textContent = fV(may26);
+  document.getElementById('kpi-may-yoy').textContent = 'YoY: '+fP(mayYoy)+' vs '+fV(may25);
+  document.getElementById('kpi-kwcount').textContent = data.length.toLocaleString();
+  const mkts = [...new Set(data.map(d=>d.m))].sort();
+  document.getElementById('kpi-kw-markets').textContent = mkts.join(', ')||'—';
+  document.getElementById('header-meta').innerHTML =
+    fV(ytd26)+' total YTD 2026<br>'+fP(yoy)+' YoY';
+}
+
+// ============================================================
+// MAIN UPDATE
+// ============================================================
+function update() {
+  const d = filtered();
+  updKPIs(d);
+  updTrend(d);
+  updYoY(d);
+  updLast3m(d);
+  updIntent(d);
+  updSubject(d);
+  updTable(d);
+}
+
+// ============================================================
+// INTERACTIONS
+// ============================================================
+function setFilter(k, v) {
+  ST[k] = v; ST.page = 0;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const oc = btn.getAttribute('onclick')||'';
+    if (oc.includes("'"+k+"'") && oc.includes("'"+v+"'")) btn.classList.add('active');
+    else if (oc.includes("'"+k+"'")) btn.classList.remove('active');
+  });
+  update();
+}
+function setTrendMode(m) {
+  ST.trendMode = m;
+  document.querySelectorAll('.toggle-btn').forEach(b => {
+    const oc = b.getAttribute('onclick')||'';
+    b.classList.toggle('active', oc.includes('setTrendMode') && oc.includes("'"+m+"'"));
+  });
+  updTrend(filtered());
+}
+function setYoyMode(m) {
+  ST.yoyMode = m;
+  document.querySelectorAll('.toggle-btn').forEach(b => {
+    const oc = b.getAttribute('onclick')||'';
+    b.classList.toggle('active', oc.includes('setYoyMode') && oc.includes("'"+m+"'"));
+  });
+  updYoY(filtered());
+}
+function sortBy(col) {
+  ST.sort.dir = ST.sort.col===col ? (ST.sort.dir==='asc'?'desc':'asc') : 'desc';
+  ST.sort.col = col;
+  ST.page = 0;
+  document.querySelectorAll('[id^="si-"]').forEach(el=>el.textContent='');
+  const el = document.getElementById('si-'+col);
+  if (el) el.textContent = ST.sort.dir==='asc'?' ↑':' ↓';
+  updTable(filtered());
+}
+function goPage(p) { ST.page=p; updTable(filtered()); }
+function onSearch() { ST.search=document.getElementById('kwSearch').value.toLowerCase(); ST.page=0; update(); }
+function exportCSV() {
+  const d = filtered();
+  const rows = d.map(x => {
+    const yoy = x.y25>0?((x.y26-x.y25)/x.y25*100).toFixed(1)+'%':'';
+    return ['"'+x.k.replace(/"/g,'""')+'"',x.m,x.b,INTENT_LABELS[x.intent],
+            SUBJECT_LABELS[x.subject]||x.subject,x.y25,x.y26,yoy,x.vols[4]||0,x.vols[16]||0].join(',');
+  });
+  const csv = ['Keyword,Market,Brand,Intent,Subject,YTD 2025,YTD 2026,YoY%,May 2025,May 2026',...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = 'search_volume_keywords.csv';
+  a.click();
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+initCharts();
+update();
+document.getElementById('si-y26').textContent = ' ↓';
+</script>
+</body>
+</html>

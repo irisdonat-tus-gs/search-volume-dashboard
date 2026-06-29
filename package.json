@@ -1,0 +1,11 @@
+{
+  "name": "search-volume-dashboard",
+  "version": "1.0.0",
+  "description": "TUS tutoring markets search volume dashboard",
+  "scripts": {
+    "build": "node src/build.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

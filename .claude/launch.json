@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "C:\\Users\\Iris DONAT-MAGNIN\\.ScreamingFrogSEOSpider\\node\\3.2\\node\\node.exe",
+      "runtimeArgs": ["server.js"],
+      "port": 3737
+    }
+  ]
+}
