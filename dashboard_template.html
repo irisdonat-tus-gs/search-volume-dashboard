@@ -642,7 +642,7 @@ function updTable(data) {
     if (col==='b') return dir==='asc'?a.b.localeCompare(b.b):b.b.localeCompare(a.b);
     if (col==='intent') return dir==='asc'?a.intent.localeCompare(b.intent):b.intent.localeCompare(a.intent);
     if (col==='subject') return dir==='asc'?a.subject.localeCompare(b.subject):b.subject.localeCompare(a.subject);
-    if (col==='may26') { va=a.vols[16]||0; vb=b.vols[16]||0; }
+    if (col==='may26') { va=a.vols[midx('2026-05')]||0; vb=b.vols[midx('2026-05')]||0; }
     else { va=a[col]||0; vb=b[col]||0; }
     return dir==='asc'?va-vb:vb-va;
   });
@@ -664,7 +664,7 @@ function updTable(data) {
       <td class="num">${fV(d.y25)}</td>
       <td class="num">${fV(d.y26)}</td>
       <td class="num ${yc}">${fP(yoy)}</td>
-      <td class="num">${fV(d.vols[16]||0)}</td>
+      <td class="num">${fV(d.vols[midx('2026-05')]||0)}</td>
     </tr>`;
   }).join('');
 
@@ -693,8 +693,8 @@ function updKPIs(data) {
   const ytd26 = data.reduce((a,d)=>a+d.y26,0);
   const ytd25 = data.reduce((a,d)=>a+d.y25,0);
   const yoy   = ytd25>0?(ytd26-ytd25)/ytd25:0;
-  const may26 = data.reduce((a,d)=>a+(d.vols[16]||0),0);
-  const may25 = data.reduce((a,d)=>a+(d.vols[4]||0),0);
+  const may26 = data.reduce((a,d)=>a+(d.vols[midx('2026-05')]||0),0);
+  const may25 = data.reduce((a,d)=>a+(d.vols[midx('2025-05')]||0),0);
   const mayYoy= may25>0?(may26-may25)/may25:0;
 
   document.getElementById('kpi-ytd26').textContent = fV(ytd26);
@@ -769,7 +769,7 @@ function exportCSV() {
   const rows = d.map(x => {
     const yoy = x.y25>0?((x.y26-x.y25)/x.y25*100).toFixed(1)+'%':'';
     return ['"'+x.k.replace(/"/g,'""')+'"',x.m,x.b,INTENT_LABELS[x.intent],
-            SUBJECT_LABELS[x.subject]||x.subject,x.y25,x.y26,yoy,x.vols[4]||0,x.vols[16]||0].join(',');
+            SUBJECT_LABELS[x.subject]||x.subject,x.y25,x.y26,yoy,x.vols[midx('2025-05')]||0,x.vols[midx('2026-05')]||0].join(',');
   });
   const csv = ['Keyword,Market,Brand,Intent,Subject,YTD 2025,YTD 2026,YoY%,May 2025,May 2026',...rows].join('\n');
   const a = document.createElement('a');

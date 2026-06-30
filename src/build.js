@@ -8,6 +8,13 @@ const path = require('path');
 const MARKETS = ['DE','ES','FR','UK','IT'];
 const BRANDS  = ['GS','TUS','BOTH'];
 
+// Canonical scope: Jan–May of each year only. Any other month (e.g. Jun–Dec 2025,
+// which only some sheets carry) is ignored so the timeline stays consistent across markets.
+const ALLOWED_MONTHS = new Set([
+  '2025-01','2025-02','2025-03','2025-04','2025-05',
+  '2026-01','2026-02','2026-03','2026-04','2026-05',
+]);
+
 // Month name → zero-padded number (multilingual)
 const MONTH_NUM = {
   jan:'01', january:'01', janvier:'01', enero:'01', januar:'01',
@@ -24,14 +31,32 @@ const MONTH_NUM = {
   dec:'12', december:'12', decembre:'12', diciembre:'12', dez:'12',
 };
 
+// Excel serial date (1900 system) → "YYYY-MM"
+function serialToMonthKey(n) {
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// Normalize any header variant to "YYYY-MM": real Date cells, Excel serial numbers,
+// "Searches: Jan 2025" prefixed labels, and bare "Jan 2025" / "January 2025".
 function toMonthKey(header) {
-  if (!header) return null;
-  const s = header.toString().trim();
-  // Match "Jan 2025", "Jan. 2025", "January 2025"
+  if (header === null || header === undefined || header === '') return null;
+  // Real Date cell
+  if (header instanceof Date) return serialToMonthKey((header.getTime() / 86400000) + 25569);
+  // Numeric Excel serial date (date-formatted headers come through as ~45000–46000)
+  if (typeof header === 'number') return (header > 20000 && header < 60000) ? serialToMonthKey(header) : null;
+
+  // Strip a leading "Searches:" (or similar) prefix some Semrush exports add
+  let s = header.toString().trim().replace(/^[a-zA-ZÀ-ɏ]+\s*:\s*/, '');
+  // Numeric string serial
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = parseFloat(s);
+    return (n > 20000 && n < 60000) ? serialToMonthKey(n) : null;
+  }
+  // "Jan 2025", "Jan. 2025", "January 2025"
   const m = s.match(/^([a-zA-ZÀ-ɏ]+)\.?\s+(\d{4})$/);
   if (!m) return null;
-  // Strip diacritics for matching
-  const word = m[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const word = m[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); // strip diacritics
   const num  = MONTH_NUM[word];
   if (!num) return null;
   return `${m[2]}-${num}`;
@@ -56,8 +81,8 @@ function parseSheet(wb, sheetName) {
 
     if (kwCol === -1 && /^keywords?$/i.test(s)) { kwCol = i; return; }
 
-    const mk = toMonthKey(s);
-    if (mk) { monthCols[mk] = i; return; }
+    const mk = toMonthKey(h);
+    if (mk) { if (ALLOWED_MONTHS.has(mk)) monthCols[mk] = i; return; }
 
     if (low.includes('ytd') || (low.includes('jan') && low.includes('may'))) {
       if ((low.includes('25') || low.includes('2025')) && ytd25Col === -1) { ytd25Col = i; return; }
