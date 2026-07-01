@@ -106,7 +106,7 @@
 <div class="header">
   <div>
     <h1>Search Volume Dashboard</h1>
-    <p>Tutoring Markets · Jan 2025 – May 2026 · GS &amp; TUS Keywords</p>
+    <p id="subtitle">Tutoring Markets · GS &amp; TUS Keywords</p>
   </div>
   <div class="header-meta" id="header-meta"></div>
 </div>
@@ -172,17 +172,17 @@
     <div class="kpi-card" style="--accent:#2563EB">
       <div class="kpi-label">Total Volume YTD 2026</div>
       <div class="kpi-value" id="kpi-ytd26">—</div>
-      <div class="kpi-sub">Jan–May 2026</div>
+      <div class="kpi-sub">Year to date 2026</div>
     </div>
     <div class="kpi-card" style="--accent:#10B981">
       <div class="kpi-label">YTD YoY Change</div>
       <div class="kpi-value" id="kpi-yoy">—</div>
-      <div class="kpi-sub" id="kpi-yoy-sub">vs Jan–May 2025</div>
+      <div class="kpi-sub" id="kpi-yoy-sub">vs prior year</div>
     </div>
     <div class="kpi-card" style="--accent:#F59E0B">
-      <div class="kpi-label">May 2026 Volume</div>
+      <div class="kpi-label" id="kpi-may-label">Latest month volume</div>
       <div class="kpi-value" id="kpi-may26">—</div>
-      <div class="kpi-sub" id="kpi-may-yoy">vs May 2025</div>
+      <div class="kpi-sub" id="kpi-may-yoy">vs prior year</div>
     </div>
     <div class="kpi-card" style="--accent:#6366F1">
       <div class="kpi-label">Keywords Tracked</div>
@@ -197,7 +197,7 @@
       <div class="chart-header">
         <div>
           <div class="chart-title">Monthly Search Volume Trend</div>
-          <div class="chart-sub">Total search volume across selected keywords · Jan 2025 – May 2026</div>
+          <div class="chart-sub" id="trend-sub">Total search volume across selected keywords</div>
         </div>
         <div class="chart-toggle">
           <button class="toggle-btn active" onclick="setTrendMode('total')">Total</button>
@@ -215,8 +215,8 @@
     <div class="chart-card">
       <div class="chart-header">
         <div>
-          <div class="chart-title">YoY Evolution — Jan to May</div>
-          <div class="chart-sub">Monthly volume: 2025 vs 2026</div>
+          <div class="chart-title">YoY Evolution</div>
+          <div class="chart-sub">Monthly volume · prior year vs latest year</div>
         </div>
         <div class="chart-toggle">
           <button class="toggle-btn active" onclick="setYoyMode('volume')">Volume</button>
@@ -229,7 +229,7 @@
       <div class="chart-header">
         <div>
           <div class="chart-title">Last 3 Months Trend</div>
-          <div class="chart-sub">Mar – Apr – May 2026 vs same period 2025</div>
+          <div class="chart-sub">Most recent 3 months vs same period a year earlier</div>
         </div>
       </div>
       <div class="chart-wrap" style="height:240px"><canvas id="last3mChart"></canvas></div>
@@ -278,8 +278,8 @@
             <th onclick="sortBy('y25')" class="num">YTD 2025 <span id="si-y25"></span></th>
             <th onclick="sortBy('y26')" class="num">YTD 2026 <span id="si-y26"></span></th>
             <th onclick="sortBy('yoy')" class="num">YoY% <span id="si-yoy"></span></th>
-            <th onclick="sortBy('may25')" class="num">May 2025 <span id="si-may25"></span></th>
-            <th onclick="sortBy('may26')" class="num">May 2026 <span id="si-may26"></span></th>
+            <th onclick="sortBy('may25')" class="num"><span id="lbl-may25">May 2025</span> <span id="si-may25"></span></th>
+            <th onclick="sortBy('may26')" class="num"><span id="lbl-may26">May 2026</span> <span id="si-may26"></span></th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -305,6 +305,17 @@ const MONTH_LABELS = __MONTH_LABELS__;
 // Format: [keyword_str, market_idx(0-4), brand_idx(0-2), v0..vN, ytd25, ytd26, ytd_yoy_decimal]
 //  positions:   0             1               2          3..N+2  N+3    N+4   N+5  (N = months count)
 const KW_DATA = __DATA__;
+
+// Latest month present + its prior-year counterpart. Everything "latest month" (KPI card,
+// the two month table columns, CSV) tracks these, so adding a new month auto-shifts the view.
+const _MN          = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const LATEST_KEY   = MONTH_KEYS[MONTH_KEYS.length - 1];      // e.g. '2026-05'
+const LATEST_YEAR  = parseInt(LATEST_KEY.slice(0, 4), 10);
+const LATEST_MM    = LATEST_KEY.slice(5);
+const PREV_KEY     = (LATEST_YEAR - 1) + '-' + LATEST_MM;    // same month, prior year
+const LATEST_LABEL = MONTH_LABELS[MONTH_KEYS.length - 1];    // e.g. 'May 2026'
+const PREV_LABEL   = _MN[parseInt(LATEST_MM, 10) - 1] + ' ' + (LATEST_YEAR - 1);
+const RANGE_LABEL  = MONTH_LABELS[0] + ' – ' + LATEST_LABEL;
 
 // ============================================================
 // CLASSIFICATION
@@ -643,8 +654,8 @@ function updTable(data) {
     if (col==='b') return dir==='asc'?a.b.localeCompare(b.b):b.b.localeCompare(a.b);
     if (col==='intent') return dir==='asc'?a.intent.localeCompare(b.intent):b.intent.localeCompare(a.intent);
     if (col==='subject') return dir==='asc'?a.subject.localeCompare(b.subject):b.subject.localeCompare(a.subject);
-    if (col==='may25') { va=a.vols[midx('2025-05')]||0; vb=b.vols[midx('2025-05')]||0; }
-    else if (col==='may26') { va=a.vols[midx('2026-05')]||0; vb=b.vols[midx('2026-05')]||0; }
+    if (col==='may25') { va=a.vols[midx(PREV_KEY)]||0; vb=b.vols[midx(PREV_KEY)]||0; }
+    else if (col==='may26') { va=a.vols[midx(LATEST_KEY)]||0; vb=b.vols[midx(LATEST_KEY)]||0; }
     else { va=a[col]||0; vb=b[col]||0; }
     return dir==='asc'?va-vb:vb-va;
   });
@@ -666,8 +677,8 @@ function updTable(data) {
       <td class="num">${fV(d.y25)}</td>
       <td class="num">${fV(d.y26)}</td>
       <td class="num ${yc}">${fP(yoy)}</td>
-      <td class="num">${fV(d.vols[midx('2025-05')]||0)}</td>
-      <td class="num">${fV(d.vols[midx('2026-05')]||0)}</td>
+      <td class="num">${fV(d.vols[midx(PREV_KEY)]||0)}</td>
+      <td class="num">${fV(d.vols[midx(LATEST_KEY)]||0)}</td>
     </tr>`;
   }).join('');
 
@@ -696,8 +707,8 @@ function updKPIs(data) {
   const ytd26 = data.reduce((a,d)=>a+d.y26,0);
   const ytd25 = data.reduce((a,d)=>a+d.y25,0);
   const yoy   = ytd25>0?(ytd26-ytd25)/ytd25:0;
-  const may26 = data.reduce((a,d)=>a+(d.vols[midx('2026-05')]||0),0);
-  const may25 = data.reduce((a,d)=>a+(d.vols[midx('2025-05')]||0),0);
+  const may26 = data.reduce((a,d)=>a+(d.vols[midx(LATEST_KEY)]||0),0);
+  const may25 = data.reduce((a,d)=>a+(d.vols[midx(PREV_KEY)]||0),0);
   const mayYoy= may25>0?(may26-may25)/may25:0;
 
   document.getElementById('kpi-ytd26').textContent = fV(ytd26);
@@ -705,8 +716,9 @@ function updKPIs(data) {
   yoyEl.textContent = fP(yoy);
   yoyEl.className = 'kpi-value '+(yoy>=0?'up':'down');
   document.getElementById('kpi-yoy-sub').textContent = 'YTD 2025: '+fV(ytd25);
+  document.getElementById('kpi-may-label').textContent = LATEST_LABEL + ' Volume';
   document.getElementById('kpi-may26').textContent = fV(may26);
-  document.getElementById('kpi-may-yoy').textContent = 'YoY: '+fP(mayYoy)+' vs '+fV(may25);
+  document.getElementById('kpi-may-yoy').textContent = 'YoY: '+fP(mayYoy)+' vs '+PREV_LABEL+' ('+fV(may25)+')';
   document.getElementById('kpi-kwcount').textContent = data.length.toLocaleString();
   const mkts = [...new Set(data.map(d=>d.m))].sort();
   document.getElementById('kpi-kw-markets').textContent = mkts.join(', ')||'—';
@@ -772,9 +784,9 @@ function exportCSV() {
   const rows = d.map(x => {
     const yoy = x.y25>0?((x.y26-x.y25)/x.y25*100).toFixed(1)+'%':'';
     return ['"'+x.k.replace(/"/g,'""')+'"',x.m,x.b,INTENT_LABELS[x.intent],
-            SUBJECT_LABELS[x.subject]||x.subject,x.y25,x.y26,yoy,x.vols[midx('2025-05')]||0,x.vols[midx('2026-05')]||0].join(',');
+            SUBJECT_LABELS[x.subject]||x.subject,x.y25,x.y26,yoy,x.vols[midx(PREV_KEY)]||0,x.vols[midx(LATEST_KEY)]||0].join(',');
   });
-  const csv = ['Keyword,Market,Brand,Intent,Subject,YTD 2025,YTD 2026,YoY%,May 2025,May 2026',...rows].join('\n');
+  const csv = ['Keyword,Market,Brand,Segment,Subject,YTD 2025,YTD 2026,YoY%,'+PREV_LABEL+','+LATEST_LABEL,...rows].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
   a.download = 'search_volume_keywords.csv';
@@ -784,6 +796,11 @@ function exportCSV() {
 // ============================================================
 // BOOT
 // ============================================================
+// Fill dynamic month labels (auto-track the latest month present in the data)
+document.getElementById('subtitle').textContent  = 'Tutoring Markets · ' + RANGE_LABEL + ' · GS & TUS Keywords';
+document.getElementById('trend-sub').textContent = 'Total search volume across selected keywords · ' + RANGE_LABEL;
+document.getElementById('lbl-may25').textContent = PREV_LABEL;
+document.getElementById('lbl-may26').textContent = LATEST_LABEL;
 initCharts();
 update();
 document.getElementById('si-y26').textContent = ' ↓';

@@ -8,13 +8,6 @@ const path = require('path');
 const MARKETS = ['DE','ES','FR','UK','IT'];
 const BRANDS  = ['GS','TUS','BOTH'];
 
-// Canonical scope: Jan–May of each year only. Any other month (e.g. Jun–Dec 2025,
-// which only some sheets carry) is ignored so the timeline stays consistent across markets.
-const ALLOWED_MONTHS = new Set([
-  '2025-01','2025-02','2025-03','2025-04','2025-05',
-  '2026-01','2026-02','2026-03','2026-04','2026-05',
-]);
-
 // Month name → zero-padded number (multilingual)
 const MONTH_NUM = {
   jan:'01', january:'01', janvier:'01', enero:'01', januar:'01',
@@ -82,7 +75,7 @@ function parseSheet(wb, sheetName) {
     if (kwCol === -1 && /^keywords?$/i.test(s)) { kwCol = i; return; }
 
     const mk = toMonthKey(h);
-    if (mk) { if (ALLOWED_MONTHS.has(mk)) monthCols[mk] = i; return; }
+    if (mk) { monthCols[mk] = i; return; }
 
     if (low.includes('ytd') || (low.includes('jan') && low.includes('may'))) {
       if ((low.includes('25') || low.includes('2025')) && ytd25Col === -1) { ytd25Col = i; return; }
@@ -156,7 +149,20 @@ function build() {
   for (const row of allRows)
     for (const k of Object.keys(row))
       if (/^\d{4}-\d{2}$/.test(k)) monthSet.add(k);
-  const sortedMonths = [...monthSet].sort();
+  let sortedMonths = [...monthSet].sort();
+
+  // Dynamic scope: keep only months whose month-of-year also appears in the LATEST year
+  // present. Auto-extends as new months are added (add Jun 2026 → Jun 2025 is pulled in for
+  // comparison) while dropping lonely months with no counterpart in the latest year (e.g.
+  // Jun–Dec 2025 from sheets that carry a full rolling history).
+  if (sortedMonths.length) {
+    const years = [...new Set(sortedMonths.map(k => k.slice(0, 4)))].sort();
+    const latestYear = years[years.length - 1];
+    const latestMM = new Set(sortedMonths.filter(k => k.slice(0, 4) === latestYear).map(k => k.slice(5)));
+    const dropped = sortedMonths.filter(k => !latestMM.has(k.slice(5)));
+    sortedMonths = sortedMonths.filter(k => latestMM.has(k.slice(5)));
+    if (dropped.length) console.log(`     Scoped out ${dropped.length} month(s) with no ${latestYear} match: ${dropped.join(', ')}`);
+  }
 
   const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthLabels = sortedMonths.map(k => {
