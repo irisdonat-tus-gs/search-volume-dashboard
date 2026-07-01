@@ -430,10 +430,19 @@ const DATA = KW_DATA.map(row => {
   const intent  = classifyIntent(row[0], market);
   const subject = classifySubject(row[0]);
   const vols    = row.slice(3, 3+N);
-  const ytd25   = row[3+N]   || 0;
-  const ytd26   = row[3+N+1] || 0;
-  const ytdYoy  = row[3+N+2] || 0;
-  return {k:row[0], m:market, b:brand, intent, subject, vols, y25:ytd25, y26:ytd26, yoy:ytdYoy};
+  // Derive YTD from the monthly columns instead of the sheet's YTD cell — those cells are
+  // blank/0 for many rows (e.g. appended keywords where the YTD formula wasn't extended),
+  // which produced "0 YTD but has monthly volume". Summing months matches the sheet's own
+  // YTD wherever it IS filled, and auto-tracks the dynamic month scope.
+  let y25 = 0, y26 = 0;
+  MONTH_KEYS.forEach((k, i) => {
+    const v = vols[i] || 0;
+    const yr = parseInt(k.slice(0, 4), 10);
+    if (yr === LATEST_YEAR) y26 += v;
+    else if (yr === LATEST_YEAR - 1) y25 += v;
+  });
+  const yoy = y25 > 0 ? (y26 - y25) / y25 : 0;
+  return {k:row[0], m:market, b:brand, intent, subject, vols, y25, y26, yoy};
 });
 
 // ============================================================
