@@ -170,10 +170,13 @@ function build() {
     return `${MN[parseInt(m, 10) - 1]} ${y}`;
   });
 
-  // Deduplicate by (keyword_lower, market) — average volumes across GS+TUS
+  // Group by (keyword_lower, market, brand) — GS and TUS kept SEPARATE so each project's
+  // search volume is summed independently. A keyword shared across both projects yields one
+  // record per project (they may carry different Semrush volumes); the front-end shows it once
+  // in the "All brands" view. No cross-brand averaging.
   const grouped = new Map();
   for (const row of allRows) {
-    const key = row.keyword.toLowerCase() + '|' + row.market;
+    const key = row.keyword.toLowerCase() + '|' + row.market + '|' + row.brand;
     const arr = grouped.get(key) || [];
     arr.push(row);
     grouped.set(key, arr);
@@ -183,28 +186,24 @@ function build() {
   for (const [, group] of grouped) {
     const r0   = group[0];
     const mIdx = MARKETS.indexOf(r0.market);
-    if (mIdx === -1) continue;
+    const bIdx = BRANDS.indexOf(r0.brand);   // 0 = GS, 1 = TUS
+    if (mIdx === -1 || bIdx === -1) continue;
 
-    const brands = group.map(r => r.brand);
-    const bIdx   = (brands.includes('GS') && brands.includes('TUS')) ? 2
-                 : brands.includes('GS') ? 0 : 1;
-
-    const avgField = field => {
+    // Same keyword can appear more than once within one sheet — collapse by taking the max.
+    const maxField = field => {
       const vals = group.map(r => r[field]).filter(v => v != null);
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      return vals.length ? Math.max(...vals) : 0;
     };
-
     const vols = sortedMonths.map(mk => {
       const vals = group.map(r => r[mk]).filter(v => v != null);
-      return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+      return vals.length ? Math.max(...vals) : null;
     });
 
     compact.push([r0.keyword, mIdx, bIdx, ...vols,
-      avgField('_ytd25'), avgField('_ytd26'), avgField('_ytd_yoy')]);
+      maxField('_ytd25'), maxField('_ytd26'), r0._ytd_yoy != null ? r0._ytd_yoy : 0]);
   }
 
-  const dupes = allRows.length - grouped.size;
-  console.log(`     Deduplicated: ${compact.length} unique keywords (merged ${dupes} duplicates)`);
+  console.log(`     ${compact.length} keyword-project records (GS + TUS kept separate)`);
   console.log(`     Months: ${monthLabels[0]} → ${monthLabels[monthLabels.length - 1]}`);
 
   // Inject into template

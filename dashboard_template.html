@@ -79,6 +79,7 @@
     .b-IT{background:#FFFBEB;color:#D97706;}
     .b-GS{background:#F0FDF4;color:#15803D;}
     .b-TUS{background:#FDF4FF;color:#9333EA;}
+    .b-BOTH{background:#F1F5F9;color:#475569;}
     .b-classes{background:#EFF6FF;color:#2563EB;}
     .b-tutors{background:#EEF2FF;color:#4F46E5;}
     .b-online{background:#ECFDF5;color:#059669;}
@@ -302,7 +303,8 @@ const BRANDS  = ['GS','TUS','BOTH'];
 // Injected by build script — grows automatically as new months are added
 const MONTH_KEYS   = __MONTH_KEYS__;
 const MONTH_LABELS = __MONTH_LABELS__;
-// Format: [keyword_str, market_idx(0-4), brand_idx(0-2), v0..vN, ytd25, ytd26, ytd_yoy_decimal]
+// Format: [keyword_str, market_idx(0-4), brand_idx(0=GS,1=TUS), v0..vN, ytd25, ytd26, ytd_yoy_decimal]
+//   GS and TUS are separate records; shared keywords appear once per project (deduped in All view)
 //  positions:   0             1               2          3..N+2  N+3    N+4   N+5  (N = months count)
 const KW_DATA = __DATA__;
 
@@ -442,14 +444,26 @@ const ST = {market:'ALL', brand:'ALL', intent:'ALL', subject:'ALL',
              sort:{col:'y26', dir:'desc'}, page:0, perPage:50, search:''};
 
 function filtered() {
-  return DATA.filter(d => {
+  // Non-brand filters first
+  const rows = DATA.filter(d => {
     if (ST.market  !== 'ALL' && d.m       !== ST.market)  return false;
-    if (ST.brand   !== 'ALL' && d.b !== ST.brand && d.b !== 'BOTH') return false;
     if (ST.intent  !== 'ALL' && d.intent  !== ST.intent)  return false;
     if (ST.subject !== 'ALL' && d.subject !== ST.subject) return false;
     if (ST.search  && !d.k.toLowerCase().includes(ST.search)) return false;
     return true;
   });
+  // Brand views: each project sums its own keywords (GS and TUS overlap on shared keywords).
+  if (ST.brand === 'GS')  return rows.filter(d => d.b === 'GS');
+  if (ST.brand === 'TUS') return rows.filter(d => d.b === 'TUS');
+  // All brands: show each keyword once. Keep the higher-volume reading, flag shared as "Both".
+  const seen = new Map();
+  for (const d of rows) {
+    const key = d.k.toLowerCase() + '|' + d.m;
+    const ex = seen.get(key);
+    if (!ex) { seen.set(key, {...d}); }
+    else { const keep = d.y26 > ex.y26 ? {...d} : {...ex}; keep.b = 'BOTH'; seen.set(key, keep); }
+  }
+  return [...seen.values()];
 }
 
 // ============================================================
