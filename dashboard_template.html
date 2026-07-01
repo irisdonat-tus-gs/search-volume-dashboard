@@ -278,6 +278,7 @@
             <th onclick="sortBy('y25')" class="num">YTD 2025 <span id="si-y25"></span></th>
             <th onclick="sortBy('y26')" class="num">YTD 2026 <span id="si-y26"></span></th>
             <th onclick="sortBy('yoy')" class="num">YoY% <span id="si-yoy"></span></th>
+            <th onclick="sortBy('may25')" class="num">May 2025 <span id="si-may25"></span></th>
             <th onclick="sortBy('may26')" class="num">May 2026 <span id="si-may26"></span></th>
           </tr>
         </thead>
@@ -642,7 +643,8 @@ function updTable(data) {
     if (col==='b') return dir==='asc'?a.b.localeCompare(b.b):b.b.localeCompare(a.b);
     if (col==='intent') return dir==='asc'?a.intent.localeCompare(b.intent):b.intent.localeCompare(a.intent);
     if (col==='subject') return dir==='asc'?a.subject.localeCompare(b.subject):b.subject.localeCompare(a.subject);
-    if (col==='may26') { va=a.vols[midx('2026-05')]||0; vb=b.vols[midx('2026-05')]||0; }
+    if (col==='may25') { va=a.vols[midx('2025-05')]||0; vb=b.vols[midx('2025-05')]||0; }
+    else if (col==='may26') { va=a.vols[midx('2026-05')]||0; vb=b.vols[midx('2026-05')]||0; }
     else { va=a[col]||0; vb=b[col]||0; }
     return dir==='asc'?va-vb:vb-va;
   });
@@ -664,6 +666,7 @@ function updTable(data) {
       <td class="num">${fV(d.y25)}</td>
       <td class="num">${fV(d.y26)}</td>
       <td class="num ${yc}">${fP(yoy)}</td>
+      <td class="num">${fV(d.vols[midx('2025-05')]||0)}</td>
       <td class="num">${fV(d.vols[midx('2026-05')]||0)}</td>
     </tr>`;
   }).join('');
